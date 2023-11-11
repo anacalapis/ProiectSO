@@ -1,0 +1,71 @@
+nume fisier: legatura
+dimensiunea in octeti : 7
+dimensiunea in octeti a fisierului target : 6
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : rwx
+
+
+nume fisier: fis1.txt
+dimensiunea in octeti : 27
+identificatorul utilizatorului: 1000
+timpul ultimei modificari 11.11.2023 
+contorul de legaturi : 1
+dreptul de acces user : rw-
+dreptul de acces grup : rw-
+dreptul de acces pt ceilalti : r--
+
+
+nume fisier: dir1
+identificatorul utilizatorului: 1000
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : r-x
+
+
+nume fisier: fis2.txt
+dimensiunea in octeti : 14
+identificatorul utilizatorului: 1000
+timpul ultimei modificari 10.11.2023 
+contorul de legaturi : 1
+dreptul de acces user : rw-
+dreptul de acces grup : rw-
+dreptul de acces pt ceilalti : r--
+
+
+nume fisier: ..
+identificatorul utilizatorului: 1000
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : r-x
+
+
+nume fisier: .
+identificatorul utilizatorului: 1000
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : r-x
+
+
+nume fisier: fis.txt
+dimensiunea in octeti : 6
+identificatorul utilizatorului: 1000
+timpul ultimei modificari 07.11.2023 
+contorul de legaturi : 1
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : r-x
+
+
+nume fisier: imagine.bmp
+dimensiune in octeti : 7372938
+inaltime : 1920
+lungime : 1280
+identificatorul utilizatorului: 1000
+timpul ultimei modificari 07.11.2023 
+contorul de legaturi : 1
+dreptul de acces user : rw-
+dreptul de acces grup : rw-
+dreptul de acces pt ceilalti : r--
+
+

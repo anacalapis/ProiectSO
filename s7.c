@@ -10,9 +10,10 @@
 #include<stdint.h>
 #include<math.h>
 #include<time.h>
+
 #define BUF_SIZE 512
 #define BUF_READ 4
-
+//verifica daca s-a primit exact 1 paramentru
 void numar_corect_de_parametrii(int argc)
 {
     if(argc!=2)       
@@ -21,7 +22,7 @@ void numar_corect_de_parametrii(int argc)
         exit(7);
     }
 }
-
+//se verifica daca argumentul dat in linia de comanda este director sau nu
 void validare_director(char* argv[], struct stat dir)
 {
     char mesaj_eroare[100]="Usage ";
@@ -39,6 +40,7 @@ void validare_director(char* argv[], struct stat dir)
         exit(7);
     }
 }
+//se verifica daca fisierul primit este o imagine .bmp
 int validare_daca_este_sau_nu_imagine_bmp(char *denumire)
 {
     char sir[50];
@@ -50,6 +52,7 @@ int validare_daca_este_sau_nu_imagine_bmp(char *denumire)
     }
     return 1;
 }
+//verifica daca paramnetul primit in linia de comanda este de tip .bmp(saptamana 6)
 void validare_imagine_bmp(char* argv[], struct stat var)
 {
     int finbmp;
@@ -71,7 +74,7 @@ void validare_imagine_bmp(char* argv[], struct stat var)
         exit(7);
     }
 }
-
+//se deschide fisierul primit ca si paramentru
 void validare_fisiere_deschidere(int *fin, char* argv[])
 {
     if((*fin=open(argv[1], O_RDONLY))<0)
@@ -79,6 +82,7 @@ void validare_fisiere_deschidere(int *fin, char* argv[])
         perror("Nu s-a putut deschide fisierul de citire");
         }
 }
+//returneaza fisierul deschis daca totul este ok
 DIR* validare_director_deschidere( char* argv[])
 {
     DIR* director;
@@ -89,6 +93,7 @@ DIR* validare_director_deschidere( char* argv[])
     }
     return director;
 }
+//deschiderea fisierului de scriere
 void validare_fisier_de_scriere(int *fout)
 {
     if((*fout=open("statistica.txt", O_WRONLY|O_TRUNC|O_CREAT, S_IRWXU))<0)
@@ -96,6 +101,7 @@ void validare_fisier_de_scriere(int *fout)
         perror("Nu s-a putut deschide fisierul de scriere");
         }
 }
+//am facut o functie de ridicare la putere deoarece fct pow nu poate primii ca si argumente variabile
 int ridicare_la_putere (int baza, int exp)
 {
     int rezultat=1;
@@ -106,7 +112,7 @@ int ridicare_la_putere (int baza, int exp)
     }
     return rezultat;
 }
-
+//transformarea din binar in zecimal pentru un nr de octeti dat ca si parametru
 int calculare_format_zecimal(int nr_octeti, uint8_t buffer_read[])
 {
     int k_bit=0;   //tine minte la ce putere trebuie sa inmultim cand facem conversia
@@ -127,9 +133,9 @@ int calculare_format_zecimal(int nr_octeti, uint8_t buffer_read[])
     return nr;
 }
 char sir[5];
-char* acces_user(struct stat var, char* argv[])
+//returneaza stringul care contine drepturile de acces pentru user
+char* acces_user(struct stat var)
 {
-    stat(argv[1], &var);
     strcpy(sir, "\0");
     if((var.st_mode & S_IRUSR) !=0)
         strcat(sir, "r");
@@ -145,9 +151,9 @@ char* acces_user(struct stat var, char* argv[])
         strcat(sir, "-");
     return sir;
 }
-char* acces_grup(struct stat var, char* argv[])
+//returneaza stringul care contine drepturile de acces pentru grup
+char* acces_grup(struct stat var)
 {
-    stat(argv[1], &var);
     strcpy(sir, "\0");
     if((var.st_mode & S_IRGRP) !=0)
         strcat(sir, "r");
@@ -163,9 +169,9 @@ char* acces_grup(struct stat var, char* argv[])
         strcat(sir, "-");
     return sir;
 }
-char* acces_others(struct stat var, char* argv[])
+//returneaza stringul care contine drepturile de acces pentru others
+char* acces_others(struct stat var)
 {
-    stat(argv[1], &var);
     strcpy(sir, "\0");
     if((var.st_mode & S_IROTH) !=0)
         strcat(sir, "r");
@@ -181,24 +187,23 @@ char* acces_others(struct stat var, char* argv[])
         strcat(sir, "-");
     return sir;
 }
-
-void acces_drepturi_pentru_toate_tipurile_de_utilizatori(struct stat var, int *fout, char* argv[])
+//scrie in fisierul de iesire drepturile de acces pentru toate categoriile
+void acces_drepturi_pentru_toate_tipurile_de_utilizatori(struct stat var, int *fout)
 {
-    stat(argv[1], &var);
     uint8_t buffer[BUF_SIZE];
-    sprintf(buffer, "dreptul de acces user : %s\n", acces_user(var, argv));
+    sprintf(buffer, "dreptul de acces user : %s\n", acces_user(var));
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
         perror("Nu s-a putut scrie in fisier!");
         exit(7);
     }
-    sprintf(buffer, "dreptul de acces grup : %s\n", acces_grup(var, argv));
+    sprintf(buffer, "dreptul de acces grup : %s\n", acces_grup(var));
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
         perror("Nu s-a putut scrie in fisier!");
         exit(7);
     }
-    sprintf(buffer, "dreptul de acces pt ceilalti : %s\n\n\n", acces_others(var,argv));
+    sprintf(buffer, "dreptul de acces pt ceilalti : %s\n\n\n", acces_others(var));
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
         perror("Nu s-a putut scrie in fisier!");
@@ -206,9 +211,9 @@ void acces_drepturi_pentru_toate_tipurile_de_utilizatori(struct stat var, int *f
     }
 
 }
-void afisare_timpul_ultimei_modificari(int *fout, struct stat var, char* argv[])
+//se va afisa in formatul dorit (zi, luna, an) data ultimei modificari
+void afisare_timpul_ultimei_modificari(int *fout, struct stat var)
 {
-    stat(argv[1], &var);
     char buffer_data[50];
     time_t timp=var.st_mtime;
     struct tm data_si_timp;
@@ -220,10 +225,10 @@ void afisare_timpul_ultimei_modificari(int *fout, struct stat var, char* argv[])
         exit(7);
     }
 }
-void contor_de_legaturi(int *fout, struct stat var, char* argv[])
+//numara legaturile unui fisier
+void contor_de_legaturi(int *fout, struct stat var)
 {
     uint8_t buffer[BUF_SIZE];
-    stat(argv[1], &var);
     sprintf(buffer, "contorul de legaturi : %ld\n", var.st_nlink);
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
@@ -231,7 +236,8 @@ void contor_de_legaturi(int *fout, struct stat var, char* argv[])
         exit(7);
     }
 }
-
+//pentru a putea sari peste anumita informatie dintr-un fisier
+//este folosita pentru a ne ajuta sa ajunge la bytes pe care ni dorim
 void citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(int *fin, int nr_bytes)
 {
     uint8_t buffer_read_nefolosit[BUF_READ];
@@ -241,7 +247,7 @@ void citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(int *fin, int nr
         exit(7);
     }
 }
-
+//afiseaza in fisierul de scriere dimensiunile unei imagini .bmp
 void dimensiune_imagine_bmp(int *fin, int *fout)
 {
     uint8_t buffer_read[BUF_READ];
@@ -281,8 +287,7 @@ void dimensiune_imagine_bmp(int *fin, int *fout)
         exit(7);
     }
 }
-
-
+//se afiseaza in fisierul de sciere numele fisierului primit ca si parametru (saptamana 6 )
 void afisare_nume_fisier(int *fout, char* argv[])
 {
     uint8_t buffer[BUF_SIZE];
@@ -293,7 +298,30 @@ void afisare_nume_fisier(int *fout, char* argv[])
         exit(7);
     } 
 }
-void afisare_dimensiuni_in_octeti(int *fin, int *fout)
+//se afiseaza in fisierul de sciere dimensiune unui fisier in bytes
+void afisare_dimensiune_in_octeti(int *fout, struct stat var)
+{
+    char buffer[BUF_SIZE];
+    sprintf(buffer, "dimensiunea in octeti : %ld\n", var.st_size);
+    if((write(*fout, buffer, strlen(buffer)))<0)
+    {
+        perror("Nu s-a putut scrie in fisier!");
+        exit(7);
+    } 
+}
+//afisarea fisierului target in cazul legaturilor simbolice
+void afisare_dimensiune_in_octeti_a_fisierului_target(int *fout, struct stat var)
+{
+    char buffer[BUF_SIZE];
+    sprintf(buffer, "dimensiunea in octeti a fisierului target : %ld\n", var.st_size);
+    if((write(*fout, buffer, strlen(buffer)))<0)
+    {
+        perror("Nu s-a putut scrie in fisier!");
+        exit(7);
+    } 
+}
+//afisarea in fisierul de scriere a dimensiunii in bytes a unei imagini .bmp
+void afisare_dimensiuni_in_octeti_a_imaginii_bmp(int *fin, int *fout)
 {
     uint8_t buffer[BUF_SIZE];
     uint8_t buffer_read[BUF_READ];
@@ -303,7 +331,6 @@ void afisare_dimensiuni_in_octeti(int *fin, int *fout)
         perror("Nu s-a putut citi din fisier!");
         exit(7);
     }
-
     if((read(*fin, buffer_read, BUF_READ))== -1)
     {
         perror("Nu s-a putut citi din fisier!");
@@ -314,22 +341,19 @@ void afisare_dimensiuni_in_octeti(int *fin, int *fout)
     {
         perror("Nu s-a putut scrie in fisier!");
         exit(7);
-    }
-    
+    } 
 }
-
-void afisare_identificator_utilizator(int *fout, struct stat var, char* argv[])
+void afisare_identificator_utilizator(int *fout, struct stat var)
 {
     uint8_t buffer[BUF_SIZE];
-    stat(argv[1], &var);
     sprintf(buffer, "identificatorul utilizatorului: %d\n", var.st_uid);
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
         perror("Nu s-a putut scrie in fisier!");
         exit(7);
     }
-
 }
+//afisarea numelui unui fisier ce se afla intr-un director
 void afisare_nume_fisier_din_director(int *fout, struct dirent *dir)
 {
     uint8_t buffer[BUF_SIZE];
@@ -340,6 +364,7 @@ void afisare_nume_fisier_din_director(int *fout, struct dirent *dir)
         exit(7);
     }   
 }
+//inchiderea fisierelor de sciere si citire
 void inchidere_fisiere(int *fin, int *fout)
 {
     int fclose;
@@ -352,42 +377,19 @@ void inchidere_fisiere(int *fin, int *fout)
         perror("Nu s-a putut inchide fisierul de scriere");
     }
 }
+//inchiderea directorului
+void inchiderea_directorului(DIR *dir)
+{
+    int fclose;
+    if((fclose=closedir(dir))!=0)
+    {
+        perror("Nu s-a putut inchide directorul");
+    }
+}
 
 int main(int argc, char* argv[])
 {
-    int fout, fin, fclose, rd, finbmp;
-   /* struct stat var;
-    int fout, fin, fclose, rd, finbmp;
-    char mesaj_eroare[100]="Usage ";
-    strcat(mesaj_eroare, argv[0]);
-    strcat(mesaj_eroare, " ");
-    strcat(mesaj_eroare, argv[1]);
-    if(finbmp=((stat(argv[1], &var))!=0) ) 
-    {
-    	perror(mesaj_eroare);
-        exit(7);
-    }
-
-    validare_imagine_bmp(argc, argv, var);
-    validare_fisiere_deschidere_si_scriere(&fin, &fout, argv);
-
-    afisare_nume_fisier(&fout, argv);
-
-    citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 2);
-    afisare_dimensiuni_in_octeti(&fin, &fout);
-
-    citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, BUF_READ);
-    citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, BUF_READ);
-    citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, BUF_READ);
-    
-    dimensiune_imagine_bmp(&fin, &fout);
-
-    afisare_identificator_utilizator(&fout,var,argv);
-    contor_de_legaturi(&fout, var, argv);
-    afisare_timpul_ultimei_modificari(&fout, var, argv);
-    acces_drepturi_pentru_toate_tipurile_de_utilizatori(var, &fout, argv);    
-    inchidere_fisiere(&fin, &fout);
-    */
+    int fout, fin;
     struct stat var;
     DIR* director;
     numar_corect_de_parametrii(argc);
@@ -397,62 +399,63 @@ int main(int argc, char* argv[])
     struct dirent *dir;
     while((dir=readdir(director))!=NULL)
     {
-        struct stat dir_actual;
-        int fopen_actual;
+        struct stat dir_actual; 
         char nume[100];
         strcpy(nume, argv[1]);
         strcat(nume, "/");
         strcat(nume, dir->d_name);
-        if(fopen_actual=((stat(nume, &dir_actual))!=0) ) 
+        if((lstat(nume, &dir_actual))!=0) 
         {
     	    perror("Eroare la parcurgerea directorului");
             exit(7);
+        }
+        if((fin=open(nume, O_RDONLY))<0)
+        {
+            perror("Eroare la deschidere!");
+            exit(7);
+        }
+        if(S_ISLNK(dir_actual.st_mode) !=0 )
+        {
+            struct stat leg;
+            if((stat(nume, &leg))==0)
+            {
+    	        afisare_nume_fisier_din_director(&fout, dir);
+                afisare_dimensiune_in_octeti(&fout, dir_actual);
+                afisare_dimensiune_in_octeti_a_fisierului_target(&fout, leg);
+                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+            }
         }
         if(S_ISREG(dir_actual.st_mode) !=0 ) 
         { 
             if(validare_daca_este_sau_nu_imagine_bmp(dir->d_name)==1)
             {
-                if((fin=open(nume, O_RDONLY))<0)
-                {
-                    perror("Eroare la deschidere!");
-                    exit(7);
-                }
                 afisare_nume_fisier_din_director(&fout, dir);
-                afisare_dimensiuni_in_octeti(&fin, &fout);
+                afisare_dimensiuni_in_octeti_a_imaginii_bmp(&fin, &fout);
                 dimensiune_imagine_bmp(&fin, &fout);
-                afisare_identificator_utilizator(&fout, dir_actual, argv);
-                afisare_timpul_ultimei_modificari(&fout, dir_actual, argv);
-                contor_de_legaturi(&fout, dir_actual, argv);
-                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout, argv);
+                afisare_identificator_utilizator(&fout, dir_actual);
+                afisare_timpul_ultimei_modificari(&fout, dir_actual);
+                contor_de_legaturi(&fout, dir_actual);
+                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
             }
             else
             {
                 afisare_nume_fisier_din_director(&fout, dir);
-                afisare_identificator_utilizator(&fout, dir_actual, argv);
-                afisare_timpul_ultimei_modificari(&fout, dir_actual, argv);
-                contor_de_legaturi(&fout, dir_actual, argv);
-                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout, argv);
+                afisare_dimensiune_in_octeti(&fout, dir_actual);
+                afisare_identificator_utilizator(&fout, dir_actual);
+                afisare_timpul_ultimei_modificari(&fout, dir_actual);
+                contor_de_legaturi(&fout, dir_actual);
+                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
             }
         }
         if(S_ISDIR(dir_actual.st_mode) !=0 )
         {
             afisare_nume_fisier_din_director(&fout, dir);
-            afisare_identificator_utilizator(&fout, dir_actual, argv);
-            acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout, argv);   
+            afisare_identificator_utilizator(&fout, dir_actual);
+            acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
         }
-        if(S_ISLNK(dir_actual.st_mode) !=0 )
-        {
-            if(fopen_actual=((lstat(nume, &dir_actual))!=0) ) 
-            {
-    	        perror("Eroare la legatura simbolica");
-                exit(7);
-            }
-            afisare_nume_fisier_din_director(&fout, dir);
-            //info despre legatura
-            acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout, argv);
-        }
-        
     }
+    inchidere_fisiere(&fin, &fout);
+    inchiderea_directorului(director);
     return 0;
 }
 
