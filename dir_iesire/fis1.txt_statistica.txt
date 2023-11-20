@@ -1,0 +1,10 @@
+nume fisier: fis1.txt
+dimensiunea in octeti : 27
+identificatorul utilizatorului: 1000
+timpul ultimei modificari 11.11.2023 
+contorul de legaturi : 1
+dreptul de acces user : rw-
+dreptul de acces grup : rw-
+dreptul de acces pt ceilalti : r--
+
+

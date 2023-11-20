@@ -1,0 +1,7 @@
+nume fisier: .
+identificatorul utilizatorului: 1000
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : r-x
+
+

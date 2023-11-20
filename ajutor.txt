@@ -1,0 +1,11 @@
+ int status;
+        int fiu=wait(&status);
+        if(fiu<0)
+        {
+            perror("nu se asteapta");
+            exit(7);
+        }
+        if(WIFEXITED(status))
+        {
+            printf("S-a incheiat procesul cu pid-ul %d si codul %d\n", getpid(),WEXITSTATUS(status));
+        }

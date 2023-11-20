@@ -1,0 +1,8 @@
+nume fisier: legatura
+dimensiunea in octeti : 7
+dimensiunea in octeti a fisierului target : 6
+dreptul de acces user : rwx
+dreptul de acces grup : rwx
+dreptul de acces pt ceilalti : rwx
+
+
