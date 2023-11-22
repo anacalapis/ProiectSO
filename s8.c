@@ -380,17 +380,12 @@ void afisare_nume_fisier_din_director(int *fout, struct dirent *dir)
     }   
 }
 //inchiderea fisierelor de sciere si citire
-void inchidere_fisiere(int *fin, int *fout)
+void inchidere_fisier(int *fis)
 {
     int fclose;
-    if((fclose=close(*fin))!=0)
+    if((fclose=close(*fis))!=0)
     {
-        perror("Nu s-a putut inchide fisierul de intrare");
-        exit(7);
-    }
-    if((fclose=close(*fout))!=0)
-    {
-        perror("Nu s-a putut inchide fisierul de scriere");
+        perror("Nu s-a putut inchide fisierul");
         exit(7);
     }
 }
@@ -426,44 +421,26 @@ void afisare_detaltii_proces(int nr_de_intrari)
         }
         if(WIFEXITED(status))
         {
-            printf("procesul %d s-a incheiat cu statusul %d\n", fiu, WEXITSTATUS(status));
+            printf("procesul %d s-a incheiat cu statusul %d si pid parinte %d\n", fiu, WEXITSTATUS(status), getppid());
         }
     }
 }
-void prelucrarea_bytes_pentru_tonuri_de_gri(int *fin, __uint8_t *rosu, __uint8_t *verde, __uint8_t *albastru)
+
+void deschidere_fisier_pentru_citire(int *fin, char *nume)
 {
-      
-    int rosu_zec, verde_zec, albastru_zec;
-    rosu_zec=calculare_format_zecimal(1,rosu);
-    verde_zec=calculare_format_zecimal(1, verde);
-    albastru_zec=calculare_format_zecimal(1, albastru);
-    int gri_zec=0.299*rosu_zec+0.587*verde_zec+0.114*albastru_zec;
-    *rosu=gri_zec;
-    *verde=gri_zec;
-    *albastru=gri_zec;
-   
-
-    //printf("nuanta de gri %d\n", gri_zec);
-
+     if((*fin=open(nume, O_RDONLY))<0)
+    {
+        perror("Eroare la deschidere!");
+        exit(7);
+    }
 }
- void decimal_to_binary(int x )
+void deschidere_fisier_pentru_citire_si_scriere(int *fin, char *nume)
 {
-    int copie=x;
-    int v[10];
-    int i=0, rez_final=0;
-    __uint8_t rez[1];
-    while(copie!=0)
+     if((*fin=open(nume, O_RDWR))<0)
     {
-        v[i]=(copie%2);
-        i++;
-        copie=copie/2;
+        perror("Eroare la deschidere!");
+        exit(7);
     }
-    
-    for(int j=i-1; j>=0; j--)
-    {
-        rez[j]=v[j];
-    }
-    
 }
 
 int main(int argc, char* argv[])
@@ -479,12 +456,7 @@ int main(int argc, char* argv[])
     int nr_de_intrari=0;
     struct dirent *dir;
     while((dir=readdir(director_citire))!=NULL)
-    {
-        nr_de_intrari++;
-        int pid=fork();
-        validare_fork(pid);
-        if(pid==0)  //proces fiu
-        {
+    {   
             struct stat dir_actual; 
             char nume[100];
             strcpy(nume, argv[1]);
@@ -496,122 +468,146 @@ int main(int argc, char* argv[])
                 perror("Eroare la parcurgerea directorului");
                 exit(7);
             }
-            if((fin=open(nume, O_RDONLY))<0)
-            {
-                perror("Eroare la deschidere!");
-                exit(7);
-            }
             if(S_ISLNK(dir_actual.st_mode) !=0 )
-            {
-                struct stat leg;
-                if((stat(nume, &leg))==0)
+            {   
+                nr_de_intrari++;
+                int pid=fork();
+                validare_fork(pid);
+                if(pid==0)
                 {
-                    afisare_nume_fisier_din_director(&fout, dir);
-                    afisare_dimensiune_in_octeti(&fout, dir_actual);
-                    afisare_dimensiune_in_octeti_a_fisierului_target(&fout, leg);
-                    acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                    deschidere_fisier_pentru_citire(&fin, nume);
+                    struct stat leg;
+                    if((stat(nume, &leg))==0)
+                    {
+                        afisare_nume_fisier_din_director(&fout, dir);
+                        afisare_dimensiune_in_octeti(&fout, dir_actual);
+                        afisare_dimensiune_in_octeti_a_fisierului_target(&fout, leg);
+                        acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                    }
+                    inchidere_fisier(&fout);
+                    inchidere_fisier(&fin);
+                    exit(nr_de_intrari);
+                    
                 }
+                
+                
             }
             if(S_ISREG(dir_actual.st_mode) !=0 ) 
             { 
                 if(validare_daca_este_sau_nu_imagine_bmp(dir->d_name)==1)
                 {
-                   
-                    afisare_nume_fisier_din_director(&fout, dir);
-                    afisare_dimensiuni_in_octeti_a_imaginii_bmp(&fin, &fout);
-                    dimensiune_imagine_bmp(&fin, &fout);
-                    //sar peste 28 de bytes
-                    citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 28);
-                    //prelucrare de bytes
-                     int pid2=fork();
+                    nr_de_intrari++;
+                    int pid=fork();
+                    validare_fork(pid);
+                    if(pid==0)
+                    {
+                        deschidere_fisier_pentru_citire(&fin, nume);
+                        afisare_nume_fisier_din_director(&fout, dir);
+                        afisare_dimensiuni_in_octeti_a_imaginii_bmp(&fin, &fout);
+                        dimensiune_imagine_bmp(&fin, &fout);
+                        //sar peste 28 de bytes
+                        citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 28);
+                        //prelucrare de bytes
+                        afisare_identificator_utilizator(&fout, dir_actual);
+                        afisare_timpul_ultimei_modificari(&fout, dir_actual);
+                        contor_de_legaturi(&fout, dir_actual);
+                        acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                        inchidere_fisier(&fin);
+                        inchidere_fisier(&fout);
+                        exit(nr_de_intrari);
+                    }
+                    nr_de_intrari++;
+                    int pid2=fork();
                     validare_fork(pid2);
                     if(pid2==0)
                     {
-                         /*if((fin=open(nume, O_RDWR))<0)
-                        {
-                            perror("Eroare la deschidere!");
-                            exit(7);
-                        }*/
-                        __uint8_t rosu[BUF_READ],verde[BUF_READ], albastru[BUF_READ];
-                        if((read(fin, rosu, 1))== -1)
-                        {
-                            perror("Nu s-a putut citi din fisier!");
-                            exit(7);
-                        }
-                        if((read(fin, verde, 1))== -1)
+                        deschidere_fisier_pentru_citire_si_scriere(&fin, nume);
+                        citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 18);
+                        __uint32_t width, height; //pentru a nu ma complica sa iau 4*_uint8 si sa am vectori
+                        __uint8_t buffer_read[4];
+                        int r1,r2;
+                        if((r1=read(fin, buffer_read,4))<0)
                         {
                             perror("Nu s-a putut citi din fisier!");
                             exit(7);
                         }
-                        if((read(fin, albastru, 1))== -1)
+                        width=calculare_format_zecimal(4, buffer_read);
+                        if((r1=read(fin,buffer_read,4))<0)
                         {
                             perror("Nu s-a putut citi din fisier!");
                             exit(7);
-                        } 
-                        /*int rosu_zec, verde_zec, albastru_zec;
-                        rosu_zec=calculare_format_zecimal(1,rosu);
-                        verde_zec=calculare_format_zecimal(1, verde);
-                        albastru_zec=calculare_format_zecimal(1, albastru);
-                        int gri_zec=0.299*rosu_zec+0.587*verde_zec+0.114*albastru_zec;
-                        rosu=gri_zec;
-                        verde=gri_zec;
-                        albastru=gri_zec;
-                        */
-                        char buffer[50];
-                        
-                        sprintf(buffer, "%d", 1);
-                        if((write(fin, buffer, strlen(buffer)))<0)
-                        {
-                            perror("Nu s-a putut scrie in fisier!");
-                            exit(7);
                         }
-                        sprintf(buffer, "%d", 1);
-                        if((write(fin, buffer, strlen(buffer)))<0)
+                        height=calculare_format_zecimal(4, buffer_read);
+                        //printf("%d %d", width, height);
+                        citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 28);
+                        for(int i=0; i<(height*width); i++)
                         {
-                            perror("Nu s-a putut scrie in fisier!");
-                            exit(7);
+                            __uint8_t buffer_color[3];
+                            if(read(fin,buffer_color,3)<0)
+                            {
+                                perror("Nu s-a putut citi din fisier culoare!");
+                                exit(7);
+                            }
+                            __uint8_t culoare_gri;
+                            culoare_gri= 0.299*buffer_color[0]+0.587*buffer_color[1]+0.114*buffer_color[2];
+                            buffer_color[0]=culoare_gri;
+                            buffer_color[1]=culoare_gri;
+                            buffer_color[2]=culoare_gri;
+                            lseek(fin, -3, SEEK_CUR);   //ma deplasez inapoi pt a putea scrie la locurile bune
+                            if((write(fin, buffer_color, 3))<0)
+                            {
+                                perror("Nu s-a putut scrie in fisier culoare!");
+                                exit(7);
+                            }
                         }
-                        sprintf(buffer, "%d", 1);
-                        if((write(fin, buffer, strlen(buffer)))<0)
-                        {
-                            perror("Nu s-a putut scrie in fisier!");
-                            exit(7);
-                        }
-                        //prelucrarea_bytes_pentru_tonuri_de_gri(&fin, &rosu, &verde, &albastru);
-                        exit(nr_de_intrari);
-                        nr_de_intrari++;
-                    } 
-                    
-                    afisare_identificator_utilizator(&fout, dir_actual);
-                    afisare_timpul_ultimei_modificari(&fout, dir_actual);
-                    contor_de_legaturi(&fout, dir_actual);
-                    acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                       inchidere_fisier(&fin);
+                        exit(nr_de_intrari);                              
+                    }       
                 
                 }
                 else
                 {
-                    afisare_nume_fisier_din_director(&fout, dir);
-                    afisare_dimensiune_in_octeti(&fout, dir_actual);
-                    afisare_identificator_utilizator(&fout, dir_actual);
-                    afisare_timpul_ultimei_modificari(&fout, dir_actual);
-                    contor_de_legaturi(&fout, dir_actual);
-                    acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                    nr_de_intrari++;
+                    int pid=fork();
+                    validare_fork(pid);
+                    if(pid==0)
+                    {
+                        deschidere_fisier_pentru_citire(&fin, nume);
+                        afisare_nume_fisier_din_director(&fout, dir);
+                        afisare_dimensiune_in_octeti(&fout, dir_actual);
+                        afisare_identificator_utilizator(&fout, dir_actual);
+                        afisare_timpul_ultimei_modificari(&fout, dir_actual);
+                        contor_de_legaturi(&fout, dir_actual);
+                        acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                        inchidere_fisier(&fin); 
+                        inchidere_fisier(&fout); 
+                        exit(nr_de_intrari);
+                        
+                    }                    
                 }
             }
             if(S_ISDIR(dir_actual.st_mode) !=0 )
             {
-                afisare_nume_fisier_din_director(&fout, dir);
-                afisare_identificator_utilizator(&fout, dir_actual);
-                acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                nr_de_intrari++;
+                int pid=fork();
+                validare_fork(pid);
+                if(pid==0)
+                {
+                    deschidere_fisier_pentru_citire(&fin, nume);
+                    afisare_nume_fisier_din_director(&fout, dir);
+                    afisare_identificator_utilizator(&fout, dir_actual);
+                    acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
+                    inchidere_fisier(&fin); 
+                    inchidere_fisier(&fout);
+                    exit(nr_de_intrari);
+                    
+                }
             }
-                exit(nr_de_intrari);
-                inchidere_fisiere(&fin, &fout);
-        }
-        sleep(1);
+        //sleep(1);
     }
-
-    //afisare_detaltii_proces(nr_de_intrari);
-   decimal_to_binary(16);
+    //printf("nr %d\n",nr_de_intrari);
+    afisare_detaltii_proces(nr_de_intrari);
+   
     inchiderea_directorului(director_citire);
     inchiderea_directorului(director_scriere);
     return 0;
