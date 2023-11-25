@@ -14,6 +14,7 @@
 
 #define BUF_SIZE 512
 #define BUF_READ 4
+int FIU1_FIU2[2], FIU2_PARINTE[2];
 
 //verifica daca s-a primit exact 1 paramentru
 void numar_corect_de_parametrii(int argc, int i)
@@ -268,17 +269,14 @@ void dimensiune_imagine_bmp(int *fin, int *fout)
 {
     uint8_t buffer_read[BUF_READ];
     uint8_t buffer[BUF_SIZE];
-    int n=3;
-    while(n>0)
+
+   uint8_t buffer_read_nefolosit[12];
+   if((read(*fin, buffer_read_nefolosit, 12))== -1)
     {
-        uint8_t buffer_read_nefolosit[BUF_READ];
-        if((read(*fin, buffer_read_nefolosit, 4))== -1)
-        {
-            perror("Nu s-a putut citi din fisier!");
-            exit(7);
-        }
-        n--;
+        perror("Nu s-a putut citi din fisier!");
+        exit(7);
     }
+
     if((read(*fin, buffer_read, BUF_READ))== -1)
     {
         perror("Nu s-a putut citi din fisier!");
@@ -329,7 +327,7 @@ void afisare_dimensiune_in_octeti(int *fout, struct stat var)
 void afisare_dimensiune_in_octeti_a_fisierului_target(int *fout, struct stat var)
 {
     char buffer[BUF_SIZE];
-    sprintf(buffer, "dimensiunea in octeti a fisierului target : %ld\n", var.st_size);
+    sprintf(buffer, "dimensiunea in octeti a fisierului target: %ld\n", var.st_size);
     if((write(*fout, buffer, strlen(buffer)))<0)
     {
         perror("Nu s-a putut scrie in fisier!");
@@ -341,7 +339,7 @@ void afisare_dimensiuni_in_octeti_a_imaginii_bmp(int *fin, int *fout)
 {
     uint8_t buffer[BUF_SIZE];
     uint8_t buffer_read[BUF_READ];
-    uint8_t buffer_read_nefolosit[BUF_READ];
+    uint8_t buffer_read_nefolosit[2];
     if((read(*fin, buffer_read_nefolosit, 2))== -1)
     {
         perror("Nu s-a putut citi din fisier!");
@@ -408,7 +406,7 @@ void validare_fork(int pid)
         exit(7);
     }
 }
-
+//aici se afiseaza textul dorit
 void afisare_detaltii_proces(int nr_de_intrari)
 {
     int status;
@@ -443,7 +441,7 @@ void deschidere_fisier_pentru_citire_si_scriere(int *fin, char *nume)
         exit(7);
     }
 }
-
+//pentru a verifica daca ultimul parametru e caracter sau nu
 void validare_parametru_alfanumeric(char *argv[])
 {   
     char param;
@@ -457,14 +455,69 @@ void validare_parametru_alfanumeric(char *argv[])
         exit(7);
     }
 }
+//in urma acestei fct, imaginea bmp va fii doa rin tonuri de gri
+void prelucrare_culoare_gri(int *fin, int height, int width)
+{
+    for(int i=0; i<(height*width); i++)
+    {
+        __uint8_t buffer_color[3];
+        if (read(*fin, buffer_color, 3) < 0)
+        {
+            perror("Nu s-a putut citi din fisier culoare!");
+            exit(7);
+        }
+        __uint8_t culoare_gri;
+        culoare_gri = 0.299 * buffer_color[0] + 0.587 * buffer_color[1] + 0.114 * buffer_color[2];
+        buffer_color[0] = culoare_gri;
+        buffer_color[1] = culoare_gri;
+        buffer_color[2] = culoare_gri;
+        lseek(*fin, -3, SEEK_CUR); // ma deplasez inapoi pt a putea scrie la locurile bune
+        if ((write(*fin, buffer_color, 3)) < 0)
+        {
+            perror("Nu s-a putut scrie in fisier culoare!");
+            exit(7);
+        }
+    }
+}
+//creeam pipe-urile si le si verificam
+void verificare_pipe()
+{
+    if (pipe(FIU1_FIU2) < 0)
+    {
+        perror("eroare de la fiu la fiu");
+        exit(7);
+    }
+    if (pipe(FIU2_PARINTE) < 0)
+    {
+        perror("eroare de la fiu2 la parinte");
+        exit(7);
+    }
+}
+//fct care inchide capatul de pipe transmis ca si paramnetru 
+void close_pipe(int *x)
+{
+     if (close(*x) < 0)
+     {
+         perror("Nu s-a inchis un capat al pipe-ului");
+         exit(7);
+     }
+}
+//fct ne returneaza nr de propozitii dintr-un fisier 
+int citire_din_pipe(int *from)
+{
+    int citire_pipe, contor_citire_pipe;
+    char buffer_citire_pipe[10];
+    if ((citire_pipe = read(*from, buffer_citire_pipe, 10)) >= 0)
+    {
+        contor_citire_pipe = atoi(buffer_citire_pipe);
+        //contor_pt_propozitii = contor_pt_propozitii + contor_citire_pipe;
+    }
+    return contor_citire_pipe;
+}
 
 int main(int argc, char* argv[])
 {
-    int FIU1_FIU2[2], FIU2_PARINTE[2];
-
-
-
-
+    
     int contor_pt_propozitii=0;
     int fout, fin;
     struct stat var;
@@ -473,7 +526,6 @@ int main(int argc, char* argv[])
     numar_corect_de_parametrii(argc,4);
     validare_director(argv, var,2);
     validare_parametru_alfanumeric(argv);
-    
     director_citire=validare_director_deschidere(argv,1);
     director_scriere=validare_director_deschidere(argv, 2);
     int nr_de_intrari=0;
@@ -503,17 +555,14 @@ int main(int argc, char* argv[])
                     if((stat(nume, &leg))==0)
                     {
                         afisare_nume_fisier_din_director(&fout, dir);
-                        afisare_dimensiune_in_octeti(&fout, dir_actual);
-                        afisare_dimensiune_in_octeti_a_fisierului_target(&fout, leg);
+                        afisare_dimensiune_in_octeti(&fout, leg);
+                        afisare_dimensiune_in_octeti_a_fisierului_target(&fout, dir_actual);
                         acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
                     }
                     inchidere_fisier(&fout);
                     inchidere_fisier(&fin);
-                    exit(nr_de_intrari);
-                    
+                    exit(nr_de_intrari);  
                 }
-                
-                
             }
             if(S_ISREG(dir_actual.st_mode) !=0 ) 
             { 
@@ -522,15 +571,12 @@ int main(int argc, char* argv[])
                     nr_de_intrari++;
                     int pid=fork();
                     validare_fork(pid);
-                    if(pid==0)
+                    if(pid==0)  //proces care se ocupa de scrierea in statistica.txt
                     {
                         deschidere_fisier_pentru_citire(&fin, nume);
                         afisare_nume_fisier_din_director(&fout, dir);
                         afisare_dimensiuni_in_octeti_a_imaginii_bmp(&fin, &fout);
                         dimensiune_imagine_bmp(&fin, &fout);
-                        //sar peste 28 de bytes
-                        citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 28);
-                        //prelucrare de bytes
                         afisare_identificator_utilizator(&fout, dir_actual);
                         afisare_timpul_ultimei_modificari(&fout, dir_actual);
                         contor_de_legaturi(&fout, dir_actual);
@@ -548,14 +594,13 @@ int main(int argc, char* argv[])
                         citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 18);
                         __uint32_t width, height; //pentru a nu ma complica sa iau 4*_uint8 si sa am vectori
                         __uint8_t buffer_read[4];
-                        int r1,r2;
-                        if((r1=read(fin, buffer_read,4))<0)
+                        if(read(fin, buffer_read,4)<0)
                         {
                             perror("Nu s-a putut citi din fisier!");
                             exit(7);
                         }
                         width=calculare_format_zecimal(4, buffer_read);
-                        if((r1=read(fin,buffer_read,4))<0)
+                        if(read(fin,buffer_read,4)<0)
                         {
                             perror("Nu s-a putut citi din fisier!");
                             exit(7);
@@ -563,26 +608,7 @@ int main(int argc, char* argv[])
                         height=calculare_format_zecimal(4, buffer_read);
                         //printf("%d %d", width, height);
                         citire_inutila_din_fisier_pentru_a_sari_peste_info_inutila(&fin, 28);
-                        for(int i=0; i<(height*width); i++)
-                        {
-                            __uint8_t buffer_color[3];
-                            if(read(fin,buffer_color,3)<0)
-                            {
-                                perror("Nu s-a putut citi din fisier culoare!");
-                                exit(7);
-                            }
-                            __uint8_t culoare_gri;
-                            culoare_gri= 0.299*buffer_color[0]+0.587*buffer_color[1]+0.114*buffer_color[2];
-                            buffer_color[0]=culoare_gri;
-                            buffer_color[1]=culoare_gri;
-                            buffer_color[2]=culoare_gri;
-                            lseek(fin, -3, SEEK_CUR);   //ma deplasez inapoi pt a putea scrie la locurile bune
-                            if((write(fin, buffer_color, 3))<0)
-                            {
-                                perror("Nu s-a putut scrie in fisier culoare!");
-                                exit(7);
-                            }
-                        }
+                        prelucrare_culoare_gri(&fin, height, width);
                         inchidere_fisier(&fin);
                         exit(nr_de_intrari);                              
                     }       
@@ -590,22 +616,12 @@ int main(int argc, char* argv[])
                 }
                 else
                 {
-                    if(pipe(FIU1_FIU2)<0)
-                    {
-                        perror("eroare de la fiu la fiu");
-                        exit(7);
-                    }
-                    if(pipe(FIU2_PARINTE)<0)
-                    {
-                        perror("eroare de la fiu2 la parinte");
-                        exit(7);
-                    }
+                    verificare_pipe(FIU1_FIU2, FIU2_PARINTE);
                     nr_de_intrari++;
                     int pid1=fork();
                     validare_fork(pid1);
                     if(pid1==0)
                     {
-                        
                         deschidere_fisier_pentru_citire(&fin, nume);
                         afisare_nume_fisier_din_director(&fout, dir);
                         afisare_dimensiune_in_octeti(&fout, dir_actual);
@@ -616,32 +632,13 @@ int main(int argc, char* argv[])
 
                         lseek(fin,0, SEEK_SET);    //sunt inapoi la inceputul fisierului
 
-                        //cat fin in fiul celalat
-                        //0-citire, 1-scriere
-                        if (close(FIU1_FIU2[0]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 1");
-                            exit(7);
-                        }
-                        if (close(FIU2_PARINTE[0]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 2");
-                            exit(7);
-                        } 
-                        if (close(FIU2_PARINTE[1]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 2");
-                            exit(7);
-                        } 
+                        close_pipe(&FIU1_FIU2[0]);
+                        close_pipe(&FIU2_PARINTE[0]);
+                        close_pipe(&FIU2_PARINTE[1]);
 
                         dup2(FIU1_FIU2[1], 1);
 
-                        if (close(FIU1_FIU2[1]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de scriere al procesului 1");
-                            exit(7);
-                        }
-                        
+                        close_pipe(&FIU1_FIU2[1]);
 
                         execlp("cat", "cat", nume ,NULL);
             
@@ -656,70 +653,28 @@ int main(int argc, char* argv[])
                     validare_fork(pid2);
                     if(pid2==0)
                     {
-                        
-                        if (close(FIU1_FIU2[1]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de scriere al procesului 1");
-                            exit(7);
-                        }
-                        if (close(FIU2_PARINTE[0]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 2");
-                            exit(7);
-                        } 
+                        close_pipe(&FIU1_FIU2[1]);
+                        close_pipe(&FIU2_PARINTE[0]);
 
                         dup2(FIU1_FIU2[0], 0);         //pt ca scriptul sa citeasca de la "STDIN"
                         dup2(FIU2_PARINTE[1], 1);     //ca iesire de la STDOUT sa nu se faca pe ecran ci in parinte
 
-
-                        if (close(FIU1_FIU2[0]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 1");
-                            exit(7);
-                        }
-                        if (close(FIU2_PARINTE[1]) < 0)
-                        {
-                            perror("Nu s-a inchis capatul de citire al procesului 2");
-                            exit(7);
-                        } 
+                        close_pipe(&FIU1_FIU2[0]);
+                        close_pipe(&FIU2_PARINTE[1]);
 
                         execlp("bash", "bash", "bash_script.sh", argv[3] , NULL);
                         
                         inchidere_fisier(&fin); 
                         exit(nr_de_intrari);
                     }
-                     
-                    if (close(FIU1_FIU2[0]) < 0)
-                    {
-                        perror("Nu s-a inchis capatul de citire al procesului 1");
-                        exit(7);
-                    }
-                    if (close(FIU1_FIU2[1]) < 0)
-                    {
-                        perror("Nu s-a inchis capatul de scriere al procesului 1");
-                        exit(7);
-                    }
-                    if (close(FIU2_PARINTE[1]) < 0)
-                    {
-                        perror("Nu s-a inchis capatul de citire al procesului 2");
-                        exit(7);
-                    } 
+                    close_pipe(&FIU1_FIU2[0]);
+                    close_pipe(&FIU1_FIU2[1]);
+                    close_pipe(&FIU2_PARINTE[1]);
+                  
                     //read pt a citii din pipe
-
-                    int citire_pipe, contor_citire_pipe;
-
-                    char buffer_citire_pipe[10];
-                    if((citire_pipe=read(FIU2_PARINTE[0], buffer_citire_pipe, 10 ))>=0)
-                    {
-                        contor_citire_pipe=atoi(buffer_citire_pipe);
-                        contor_pt_propozitii=contor_pt_propozitii+contor_citire_pipe;
-                    }
-                    if (close(FIU2_PARINTE[0]) < 0)
-                    {
-                        perror("Nu s-a inchis capatul de citire al procesului 2");
-                        exit(7);
-                    }
+                    contor_pt_propozitii=contor_pt_propozitii+citire_din_pipe(&FIU2_PARINTE[0]);
                     
+                    close_pipe(&FIU2_PARINTE[0]);
                 }
             }
             if(S_ISDIR(dir_actual.st_mode) !=0 )
@@ -735,11 +690,10 @@ int main(int argc, char* argv[])
                     acces_drepturi_pentru_toate_tipurile_de_utilizatori(dir_actual, &fout);
                     inchidere_fisier(&fin); 
                     inchidere_fisier(&fout);
-                    exit(nr_de_intrari);
-                    
+                    exit(nr_de_intrari);   
                 }
             }
-        //sleep(1);
+        sleep(0.5);
     }
     afisare_detaltii_proces(nr_de_intrari);
     printf("Au fost identificate in total %d propozitii care contin caracterul %s. \n", contor_pt_propozitii, argv[3]);
